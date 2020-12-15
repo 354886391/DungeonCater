@@ -104,15 +104,15 @@ public class Player : MonoBehaviour
     public Rigidbody2D rigid;
 
     private void HandleInput()
-    {
+                {
         Direction.x = Input.GetAxisRaw("Horizontal");
         Direction.y = Input.GetAxisRaw("Vertical");
         OnGround = Physics2D.Raycast(transform.position + Vector3.down * 0.55f, Vector2.down, 0.1f);
         Debug.DrawLine(transform.position + Vector3.down * 0.55f, transform.position + Vector3.down * 0.51f, Color.blue);
-    }
+                }
 
     private void Update()
-    {
+                {
         HandleInput();
         DummyRunTo(Direction.x);
         ApplyGravity();
