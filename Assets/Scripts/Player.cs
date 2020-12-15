@@ -7,15 +7,15 @@ public class Player : MonoBehaviour
 {
 
     public const float MaxFall = -16.0f;
-    public const float Gravity = 90.0f;
+    public const float Gravity = 9.0f;
     public const float HalfGravThreshold = 4.0f;
 
     public const float FastMaxFall = -24.0f;
     public const float FastMaxAccel = 30.0f;
 
     public const float MaxRun = 9.0f;
-    public const float RunAccel = 100.0f;
-    public const float RunReduce = 40.0f;
+    public const float RunAccel = 10.0f;
+    public const float RunReduce = 4.0f;
     public const float AirMult = .65f;
 
     public const float HoldingMaxRun = 7.0f;
@@ -23,7 +23,7 @@ public class Player : MonoBehaviour
 
     public const float BounceAutoJumpTime = .1f;
 
-    public const float DuckFriction = 50.0f;
+    public const float DuckFriction = 5.0f;
     public const int DuckCorrectCheck = 4;
     public const float DuckCorrectSlide = 5.0f;
 
@@ -61,6 +61,7 @@ public class Player : MonoBehaviour
     public bool IsDash;
     public bool Ducking;
     public bool OnGround;
+    public bool OnMoving;
     public int Facing;
     public Vector2 Speed;
     public Vector2 Direction;
@@ -72,16 +73,17 @@ public class Player : MonoBehaviour
 
     private void DummyRunTo(float moveX)
     {
-        //Running and Friction
-        if (Ducking && OnGround)
-            Speed.x = Mathf.MoveTowards(Speed.x, 0, DuckFriction * Time.deltaTime);
-        else
+        if (OnMoving)
         {
             float mult = OnGround ? 1 : AirMult;
             if (Math.Abs(Speed.x) > MaxRun && Facing == moveX)
                 Speed.x = Mathf.MoveTowards(Speed.x, MaxRun * moveX, RunReduce * mult * Time.deltaTime);  //Reduce back from beyond the max speed
             else
                 Speed.x = Mathf.MoveTowards(Speed.x, MaxRun * moveX, RunAccel * mult * Time.deltaTime);   //Approach the max speed
+        }
+        else
+        {
+            Speed.x = Mathf.MoveTowards(Speed.x, 0, RunAccel * 2.5f * Time.deltaTime);
         }
     }
 
@@ -104,18 +106,21 @@ public class Player : MonoBehaviour
     public Rigidbody2D rigid;
 
     private void HandleInput()
-                {
+    {
         Direction.x = Input.GetAxisRaw("Horizontal");
         Direction.y = Input.GetAxisRaw("Vertical");
-        OnGround = Physics2D.Raycast(transform.position + Vector3.down * 0.55f, Vector2.down, 0.1f);
-        Debug.DrawLine(transform.position + Vector3.down * 0.55f, transform.position + Vector3.down * 0.51f, Color.blue);
-                }
+        var startPos = transform.position + Vector3.down * 0.45f;
+        var endPos = startPos + Vector3.down * 0.07f;
+        OnMoving = Direction != Vector2.zero;
+        OnGround = Physics2D.Raycast(startPos, Vector2.down, 0.07f, LayerMask.NameToLayer("Player"));
+        Debug.DrawLine(startPos, endPos, Color.blue);
+    }
 
     private void Update()
-                {
+    {
         HandleInput();
         DummyRunTo(Direction.x);
-        ApplyGravity();
+        //ApplyGravity();
         //rigid.velocity = Speed;
         transform.position += new Vector3(Speed.x, Speed.y, 0) * Time.deltaTime;
     }
