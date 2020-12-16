@@ -159,11 +159,11 @@ class Raycast
     void HandleVerticalSlope(ref Vector2 deltaMovement)
     {
         var centerOfCollider = (_raycastOrigins.BottomLeft.x + _raycastOrigins.BottomRight.x) * 0.5f;
-        var rayDirection = Vector2.down;
-        var slopeCheckRayDistance = _slopeLimitTangent * (_raycastOrigins.BottomRight.x - centerOfCollider);
+        var rayDistance = _slopeLimitTangent * (_raycastOrigins.BottomRight.x - centerOfCollider);
+        var rayDirection = Vector2.down;  
         var slopeRayOrigin = new Vector2(centerOfCollider, _raycastOrigins.BottomLeft.y);
-        DrawRay(slopeRayOrigin, rayDirection * slopeCheckRayDistance, Color.yellow);
-        var raycastHit = Physics2D.Raycast(slopeRayOrigin, rayDirection, slopeCheckRayDistance, LayerMask.GetMask("", ""));
+        DrawRay(slopeRayOrigin, rayDirection * rayDistance, Color.yellow);
+        var raycastHit = Physics2D.Raycast(slopeRayOrigin, rayDirection, rayDistance, LayerMask.GetMask("", ""));
         if (raycastHit)
         {
             var angle = Vector2.Angle(raycastHit.normal, Vector2.up);
