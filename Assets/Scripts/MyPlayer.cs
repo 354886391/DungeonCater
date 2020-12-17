@@ -27,9 +27,6 @@ public class MyPlayer : MonoBehaviour
 
     void CalcuRaycastOrigins()
     {
-        Render;
-        SpriteRenderer;
-        MeshRenderer;
         var bounds = _boxCollider.bounds;
         bounds.Expand(-2f * _skinWidth);
         _raycastOrigins.TopLeft = new Vector2(bounds.min.x, bounds.max.y);
