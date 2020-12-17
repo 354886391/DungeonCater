@@ -16,7 +16,8 @@ public class Player : MonoBehaviour
     public const float MaxRun = 9.0f;
     public const float RunAccel = 10.0f;
     public const float RunReduce = 4.0f;
-    public const float AirMult = .65f;
+    public const float GroundMult = 1.0f;
+    public const float AirMult = .65f;  //空中横向移动系数
 
     public const float HoldingMaxRun = 7.0f;
     public const float HoldMinTime = .35f;
@@ -71,19 +72,24 @@ public class Player : MonoBehaviour
         Speed.x = Mathf.MoveTowards(Speed.x, Facing * WalkSpeed * speedMultiplier, RunAccel * Time.deltaTime);
     }
 
-    private void DummyRunTo(float moveX)
+    private void WalkToRun(float directionX)
     {
         if (OnMoving)
         {
-            float mult = OnGround ? 1 : AirMult;
-            if (Math.Abs(Speed.x) > MaxRun && Facing == moveX)
-                Speed.x = Mathf.MoveTowards(Speed.x, MaxRun * moveX, RunReduce * mult * Time.deltaTime);  //Reduce back from beyond the max speed
-            else
-                Speed.x = Mathf.MoveTowards(Speed.x, MaxRun * moveX, RunAccel * mult * Time.deltaTime);   //Approach the max speed
+            float mult = OnGround ? GroundMult : AirMult;
+            Speed.x = Mathf.MoveTowards(Speed.x, MaxRun * directionX, RunAccel * mult * Time.deltaTime);   //Approach the max speed
         }
         else
         {
             Speed.x = Mathf.MoveTowards(Speed.x, 0, RunAccel * 2.5f * Time.deltaTime);
+        }
+    }
+
+    private void JumpToFall(float directionY)
+    {
+        if (IsJump)
+        {
+
         }
     }
 
@@ -116,9 +122,15 @@ public class Player : MonoBehaviour
     private void Update()
     {
         HandleInput();
-        DummyRunTo(Direction.x);
+        WalkToRun(Direction.x);
+        JumpToFall(Direction.y);
         ApplyGravity();
         //rigid.velocity = Speed;
         transform.position += new Vector3(Speed.x, Speed.y, 0) * Time.deltaTime;
+    }
+
+    private void Move(Vector2 deltaMovement)
+    {
+
     }
 }
