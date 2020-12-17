@@ -89,17 +89,14 @@ public class Player : MonoBehaviour
 
     private void ApplyGravity()
     {
-        // 减速
-        if (Speed.y < 0)
-            Speed.y = Mathf.MoveTowards(Speed.y, MaxFall, Gravity * .5f * Time.deltaTime);
-        else
-            Speed.y = Mathf.MoveTowards(Speed.y, MaxFall, Gravity * .25f * Time.deltaTime);
-        Speed.x = Mathf.MoveTowards(Speed.x, 0, RunAccel * .2f * Time.deltaTime);
-
         if (!OnGround)
         {
             float mult = (Mathf.Abs(Speed.y) < HalfGravThreshold && IsJump) ? 0.5f : 1.0f;
             Speed.y = Mathf.MoveTowards(Speed.y, MaxFall, Gravity * mult * Time.deltaTime);
+        }
+        else
+        {
+            Speed.y = 0;
         }
     }
 
@@ -120,7 +117,7 @@ public class Player : MonoBehaviour
     {
         HandleInput();
         DummyRunTo(Direction.x);
-        //ApplyGravity();
+        ApplyGravity();
         //rigid.velocity = Speed;
         transform.position += new Vector3(Speed.x, Speed.y, 0) * Time.deltaTime;
     }
