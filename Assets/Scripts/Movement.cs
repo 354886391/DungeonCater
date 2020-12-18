@@ -3,7 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Player : MonoBehaviour
+public class Movement : MonoBehaviour
 {
 
     public const float MaxFall = -16.0f;
@@ -33,7 +33,7 @@ public class Player : MonoBehaviour
     public const float DuckSuperJumpYMult = .5f;
 
     public const float JumpGraceTime = 0.1f;
-    public const float JumpSpeed = -10.5f;
+    public const float JumpSpeed = 10.5f;
     public const float JumpHBoost = 4.0f;
     public const float VarJumpTime = .2f;
     public const float CeilingVarJumpGrace = .05f;
@@ -54,30 +54,46 @@ public class Player : MonoBehaviour
     public const float LaunchSpeed = 28.0f;
     public const float LaunchCancelThreshold = 22.0f;
 
-    public const float WalkSpeed = 6.4f;
-
-
+    public const float MaxWalk = 6.4f;
 
     public bool IsJump;
     public bool IsDash;
     public bool Ducking;
     public bool OnGround;
     public bool OnMoving;
+    public bool WalkToRun;
     public int Facing;
+    public float JumpGraceTimer;
     public Vector2 Speed;
     public Vector2 Direction;
 
-    private void DummyWalkTo(float x, float speedMultiplier = 1f)
-    {
-        Speed.x = Mathf.MoveTowards(Speed.x, Facing * WalkSpeed * speedMultiplier, RunAccel * Time.deltaTime);
-    }
 
-    private void WalkToRun(float directionX)
+    private void WalkTo(float directionX)
     {
-        if (OnMoving)
+        if (directionX != 0)
         {
             float mult = OnGround ? GroundMult : AirMult;
-            Speed.x = Mathf.MoveTowards(Speed.x, MaxRun * directionX, RunAccel * mult * Time.deltaTime);   //Approach the max speed
+            if (Mathf.Sign(Speed.x) == directionX)
+                Speed.x = Mathf.MoveTowards(Speed.x, MaxWalk * directionX, RunReduce * mult * Time.deltaTime);   //Approach the max speed
+            else
+                Speed.x = Mathf.MoveTowards(Speed.x, MaxWalk * directionX, RunAccel * mult * Time.deltaTime);   //Approach the max speed
+        }
+        else
+        {
+            Speed.x = Mathf.MoveTowards(Speed.x, 0, RunAccel * 2.5f * Time.deltaTime);
+        }
+        Speed.x = Mathf.MoveTowards(Speed.x, MaxWalk * directionX, RunAccel * Time.deltaTime);
+    }
+
+    private void RunTo(float directionX)
+    {
+        if (directionX != 0)
+        {
+            float mult = OnGround ? GroundMult : AirMult;
+            if (Mathf.Sign(Speed.x) == directionX)
+                Speed.x = Mathf.MoveTowards(Speed.x, MaxRun * directionX, RunReduce * mult * Time.deltaTime);   //Approach the max speed
+            else
+                Speed.x = Mathf.MoveTowards(Speed.x, MaxRun * directionX, RunAccel * mult * Time.deltaTime);   //Approach the max speed
         }
         else
         {
@@ -85,11 +101,26 @@ public class Player : MonoBehaviour
         }
     }
 
-    private void JumpToFall(float directionY)
+    private void JumpToFall(Vector2 direction)
     {
-        if (IsJump)
+        if (OnGround)
+            JumpGraceTimer = JumpGraceTime;
+        else if (JumpGraceTimer > 0)
+            JumpGraceTimer -= Time.deltaTime;
+        if (JumpGraceTimer > 0)
         {
-
+            if (IsJump)
+            {
+                Speed.x = JumpHBoost * direction.x;
+                Speed.y = JumpSpeed;
+            }
+            else
+                JumpGraceTimer = 0;
+        }
+        else
+        {
+            float mult = (Mathf.Abs(Speed.y) < HalfGravThreshold) ? 0.5f : 1.0f;
+            Speed.y = Mathf.MoveTowards(Speed.y, 0, Gravity * mult * Time.deltaTime);
         }
     }
 
@@ -106,12 +137,12 @@ public class Player : MonoBehaviour
         }
     }
 
-    public Rigidbody2D rigid;
-
     private void HandleInput()
     {
         Direction.x = Input.GetAxisRaw("Horizontal");
         Direction.y = Input.GetAxisRaw("Vertical");
+        WalkToRun = Input.GetKey(KeyCode.LeftShift);
+        IsJump = Input.GetKeyDown(KeyCode.Space);
         var startPos = transform.position + Vector3.down * 0.45f;
         var endPos = startPos + Vector3.down * 0.07f;
         OnMoving = Direction != Vector2.zero;
@@ -122,15 +153,14 @@ public class Player : MonoBehaviour
     private void Update()
     {
         HandleInput();
-        WalkToRun(Direction.x);
-        JumpToFall(Direction.y);
-        ApplyGravity();
+        if (WalkToRun)
+            RunTo(Direction.x);
+        else
+            WalkTo(Direction.x);
+        JumpToFall(Direction);
+        //ApplyGravity();
         //rigid.velocity = Speed;
         transform.position += new Vector3(Speed.x, Speed.y, 0) * Time.deltaTime;
     }
 
-    private void Move(Vector2 deltaMovement)
-    {
-
-    }
 }
