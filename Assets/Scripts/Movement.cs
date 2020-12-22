@@ -69,15 +69,8 @@ public class Movement : MonoBehaviour
 
     private void WalkToRun(float directionX)
     {
-        if (directionX != 0 && directionX == Facing)    //Todo
-        {
-            float mult = OnGround ? GroundMult : AirMult;
-            Speed.x = Mathf.MoveTowards(Speed.x, (IsRunning ? MaxRun : MaxWalk) * directionX, RunAccel * mult * Time.deltaTime);   //Approach the max speed
-        }
-        else
-        {
-            Speed.x = Mathf.MoveTowards(Speed.x, 0, RunAccel * 2.5f * Time.deltaTime);
-        }
+        float mult = OnGround ? GroundMult : AirMult;
+        Speed.x = Mathf.MoveTowards(Speed.x, (IsRunning ? MaxRun : MaxWalk) * directionX, RunAccel * mult * Time.deltaTime);   //Approach the max speed
     }
 
     private void JumpToFall(Vector2 direction)
