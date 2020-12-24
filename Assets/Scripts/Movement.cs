@@ -57,49 +57,49 @@ public class Movement : MonoBehaviour
     public const float MaxWalk = 6.4f;
 
     public bool IsJump;
-    public bool IsDash;
-    public bool Ducking;
+    public bool IsDash;   
     public bool OnGround;
     public bool OnMoving;
+    public bool IsDucking;
     public bool IsRunning;
     public int Facing;
     public float JumpGraceTimer;
     public Vector2 Speed;
     public Vector2 Direction;
 
-    private void WalkToRun(float directionX)
+    private void WalkToRun(float moveX)
     {
-        float mult = OnGround ? GroundMult : AirMult;
-        Speed.x = Mathf.MoveTowards(Speed.x, (IsRunning ? MaxRun : MaxWalk) * directionX, RunAccel * mult * Time.deltaTime);   //Approach the max speed
+        if (IsDucking && OnGround)
+        {
+            Speed.x = Mathf.MoveTowards(Speed.x, 0, DuckFriction * Time.deltaTime);
+            Speed.x = Mathf.MoveTowards(Speed.x, (IsRunning ? MaxRun : MaxWalk) * moveX, RunAccel * Time.deltaTime);
+        }
+        else
+        {
+            float mult = OnGround ? 1 : AirMult;
+            if (Math.Abs(Speed.x) > MaxRun && Math.Sign(Speed.x) == moveX)
+                Speed.x = Mathf.MoveTowards(Speed.x, MaxRun * moveX, RunReduce * mult * Time.deltaTime);  //Reduce back from beyond the max speed
+            else
+                Speed.x = Mathf.MoveTowards(Speed.x, MaxRun * moveX, RunAccel * mult * Time.deltaTime);   //Approach the max speed
+        }
     }
 
     private void JumpToFall(Vector2 direction)
     {
         if (OnGround)
-            JumpGraceTimer = JumpGraceTime;
-        else if (JumpGraceTimer > 0)
-            JumpGraceTimer -= Time.deltaTime;
-        if (JumpGraceTimer > 0)
         {
             if (IsJump)
-            {
-                Speed.x = JumpHBoost * direction.x;
+            {                
                 Speed.y = JumpSpeed;
+                Speed.x = JumpHBoost * direction.x;
             }
-            else
-                JumpGraceTimer = 0;
         }
         else
         {
             float mult = (Mathf.Abs(Speed.y) < HalfGravThreshold) ? 0.5f : 1.0f;
             Speed.y = Mathf.MoveTowards(Speed.y, 0, Gravity * mult * Time.deltaTime);
-        }
-        if (!OnGround)
-        {
             Speed.x = Mathf.MoveTowards(Speed.x, MaxRun * .6f * direction.x, RunAccel * .5f * AirMult * Time.deltaTime);
-            //Speed.y = Mathf.MoveTowards(Speed.y, MaxFall * 2, Gravity * 0.25f * Time.deltaTime);
         }
-
     }
 
     private void ApplyGravity()
