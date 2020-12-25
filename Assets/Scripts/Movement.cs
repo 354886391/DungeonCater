@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class Movement : MonoBehaviour
@@ -56,40 +54,118 @@ public class Movement : MonoBehaviour
 
     public const float MaxWalk = 6.4f;
 
-    public bool IsJump;
-    public bool IsDash;   
-    public bool OnGround;
-    public bool OnMoving;
-    public bool IsDucking;
-    public bool IsRunning;
-    public int Facing;
-    public float JumpGraceTimer;
-    public Vector2 Speed;
-    public Vector2 Direction;
 
-    private void WalkToRun(float moveX)
+    private const float LiftYCap = -13.0f;
+    private const float LiftXCap = 25.0f;
+    private Vector2 LiftSpeed = new Vector2(30.0f, -15.0f);
+
+    private const float SwimYSpeedMult = .5f;
+    private const float SwimMaxRise = -6.0f;
+    private const float SwimVDeccel = 60.0f;
+    private const float SwimMax = 8.0f;
+    private const float SwimUnderwaterMax = 6.0f;
+    private const float SwimAccel = 60.0f;
+    private const float SwimReduce = 40.0f;
+    private const float SwimDashSpeedMult = .75f;
+
+    private bool isJump;
+    private bool isDash;
+    private bool onGround;
+    private bool onMoving;
+    private bool isDucking;
+    private bool isRunning;
+    private bool isUnderwater;
+    private int facing;
+    private Vector2 Speed;
+    private Vector2 Direction;
+    private float jumpGraceTimer;
+    private float dashAttackTimer;
+    private float wallSlideTimer;
+    private float wallBoostTimer;
+    public float WallSlideTime { get; private set; }
+
+    public Vector2 LiftBoost
     {
-        if (IsDucking && OnGround)
+        get
         {
-            Speed.x = Mathf.MoveTowards(Speed.x, 0, DuckFriction * Time.deltaTime);
-            Speed.x = Mathf.MoveTowards(Speed.x, (IsRunning ? MaxRun : MaxWalk) * moveX, RunAccel * Time.deltaTime);
+            Vector2 val = LiftSpeed;
+
+            if (Math.Abs(val.x) > LiftXCap)
+                val.x = LiftXCap * Math.Sign(val.x);
+
+            if (val.y > 0)
+                val.y = 0;
+            else if (val.y < LiftYCap)
+                val.y = LiftYCap;
+
+            return val;
+        }
+    }
+
+
+    private void WalkToRun(Vector2 move)
+    {
+        float maxX = isUnderwater ? SwimUnderwaterMax : SwimMax;
+        float maxY = SwimMax;
+        if (Mathf.Abs(Speed.x) > SwimMax && Mathf.Sign(Speed.x) == Mathf.Sign(move.x))
+        {
+            Speed.x = Mathf.MoveTowards(Speed.x, maxX * move.x, SwimReduce * Time.deltaTime);
         }
         else
         {
-            float mult = OnGround ? 1 : AirMult;
-            if (Math.Abs(Speed.x) > MaxRun && Math.Sign(Speed.x) == moveX)
-                Speed.x = Mathf.MoveTowards(Speed.x, MaxRun * moveX, RunReduce * mult * Time.deltaTime);  //Reduce back from beyond the max speed
-            else
-                Speed.x = Mathf.MoveTowards(Speed.x, MaxRun * moveX, RunAccel * mult * Time.deltaTime);   //Approach the max speed
+            Speed.x = Mathf.MoveTowards(Speed.x, maxX * move.x, SwimAccel * Time.deltaTime);
         }
+
+        if (move.y == 0 && !onGround)
+        {
+            Speed.y = Mathf.MoveTowards(Speed.y, SwimMaxRise, SwimAccel * Time.deltaTime);
+        }
+        //else if (move.y >= 0 && onGround)
+        //{
+
+        //    float mult = (Mathf.Abs(Speed.y) < HalfGravThreshold) ? 0.5f : 1.0f;
+        //    Speed.y = Mathf.MoveTowards(Speed.y, 0, Gravity * mult * Time.deltaTime);
+        //Speed.x = Mathf.MoveTowards(Speed.x, SwimMax * .6f * move.x, SwimAccel * .5f * AirMult * Time.deltaTime);
+
+        //if (Mathf.Abs(Speed.y) > SwimMax && Mathf.Sign(Speed.y) == Mathf.Sign(move.y))
+        //{
+        //    Speed.y = Mathf.MoveTowards(Speed.y, maxY * move.y, RunReduce * Time.deltaTime);
+        //}
+        //else
+        //{
+        //    Speed.y = Mathf.MoveTowards(Speed.y, maxY * move.y, RunAccel * Time.deltaTime);
+        //}
+        //}
+        //if (onGround)
+        //{
+        //    jumpGraceTimer = JumpGraceTime;
+        //}
+        //else if (jumpGraceTimer > 0)
+        //    jumpGraceTimer -= Time.deltaTime;
+
+        //if (jumpGraceTimer > 0)
+        //{
+        //    if (isJump)
+        //    {
+        //        Jump(move);
+        //    }
+        //}
+    }
+
+    public void Jump(Vector2 move)
+    {
+        jumpGraceTimer = 0;
+        Speed.x += JumpHBoost * move.x;
+        Speed.y = JumpSpeed;
+
     }
 
     private void JumpToFall(Vector2 direction)
     {
-        if (OnGround)
+        if (onGround)
         {
-            if (IsJump)
-            {                
+            if (isJump)
+            {
                 Speed.y = JumpSpeed;
                 Speed.x = JumpHBoost * direction.x;
             }
@@ -98,15 +174,15 @@ public class Movement : MonoBehaviour
         {
             float mult = (Mathf.Abs(Speed.y) < HalfGravThreshold) ? 0.5f : 1.0f;
             Speed.y = Mathf.MoveTowards(Speed.y, 0, Gravity * mult * Time.deltaTime);
-            Speed.x = Mathf.MoveTowards(Speed.x, MaxRun * .6f * direction.x, RunAccel * .5f * AirMult * Time.deltaTime);
+            Speed.x = Mathf.MoveTowards(Speed.x, SwimMax * .6f * direction.x, Gravity * .5f * AirMult * Time.deltaTime);
         }
     }
 
     private void ApplyGravity()
     {
-        if (!OnGround)
+        if (!onGround)
         {
-            float mult = (Mathf.Abs(Speed.y) < HalfGravThreshold && IsJump) ? 0.5f : 1.0f;
+            float mult = (Mathf.Abs(Speed.y) < HalfGravThreshold && isJump) ? 0.5f : 1.0f;
             Speed.y = Mathf.MoveTowards(Speed.y, MaxFall, Gravity * mult * Time.deltaTime);
         }
         else
@@ -119,12 +195,13 @@ public class Movement : MonoBehaviour
     {
         Direction.x = Input.GetAxisRaw("Horizontal");
         Direction.y = Input.GetAxisRaw("Vertical");
-        IsRunning = Input.GetKey(KeyCode.LeftShift);
-        IsJump = Input.GetKeyDown(KeyCode.Space);
+        isRunning = Input.GetKey(KeyCode.LeftShift);
+        isJump = Input.GetKeyDown(KeyCode.Space);
+        isDucking = Input.GetKeyDown(KeyCode.Q);
         var startPos = transform.position + Vector3.down * 0.45f;
         var endPos = startPos + Vector3.down * 0.07f;
-        OnMoving = Direction != Vector2.zero;
-        OnGround = Physics2D.Raycast(startPos, Vector2.down, 0.07f, LayerMask.NameToLayer("Player"));
+        onMoving = Direction != Vector2.zero;
+        onGround = Physics2D.Raycast(startPos, Vector2.down, 0.07f, LayerMask.NameToLayer("Player"));
         Debug.DrawLine(startPos, endPos, Color.blue);
     }
 
@@ -135,10 +212,9 @@ public class Movement : MonoBehaviour
 
     private void FixedUpdate()
     {
-        WalkToRun(Direction.x);
+        WalkToRun(Direction);
         JumpToFall(Direction);
         //ApplyGravity();
-        //rigid.velocity = Speed;
         transform.position += new Vector3(Speed.x, Speed.y, 0) * Time.deltaTime;
     }
 
