@@ -2,9 +2,19 @@
 
 struct RaycastOrigin
 {
-    public Vector2 TopLeft;
-    public Vector2 BottomLeft;
-    public Vector2 BottomRight;
+    public Vector2 topLeft;
+    public Vector2 bottomLeft;
+    public Vector2 bottomRight;
+}
+
+struct CharacterState
+{
+    public bool left;
+    public bool right;
+    public bool duck;
+    public bool dash;
+    public bool onGround;
+    public bool wasOnGround;
 }
 
 class Raycast : MonoBehaviour
@@ -20,13 +30,13 @@ class Raycast : MonoBehaviour
     float _horizontalDistanceBetweenRays;
     float _kSkinWidthFloatFudgeFactor = 0.001f;
 
-    bool _onGround;
+    LayerMask multiPlatformMask;
+    LayerMask onewayPlatformMask;
 
-    LayerMask _multiPlatformMask;
-    LayerMask _onewayPlatformMask;
     RaycastHit2D raycastHit;
-    RaycastOrigin _raycastOrigin;
     BoxCollider2D _boxCollider;
+    RaycastOrigin _raycastOrigin;
+    CharacterState characterState;
     AnimationCurve _slopeSpeedMultiplier = new AnimationCurve(new Keyframe(-90f, 1.5f), new Keyframe(0f, 1f), new Keyframe(90f, 0f));
 
     private void Awake()
@@ -38,9 +48,9 @@ class Raycast : MonoBehaviour
     {
         var bounds = _boxCollider.bounds;
         bounds.Expand(-2f * _skinWidth);
-        _raycastOrigin.TopLeft = new Vector2(bounds.min.x, bounds.max.y);
-        _raycastOrigin.BottomLeft = new Vector2(bounds.min.x, bounds.min.y);
-        _raycastOrigin.BottomRight = new Vector2(bounds.max.x, bounds.min.y);
+        _raycastOrigin.topLeft = new Vector2(bounds.min.x, bounds.max.y);
+        _raycastOrigin.bottomLeft = new Vector2(bounds.min.x, bounds.min.y);
+        _raycastOrigin.bottomRight = new Vector2(bounds.max.x, bounds.min.y);
     }
 
     void FixedHorizontalMovement(ref Vector2 deltaMovement)
@@ -48,27 +58,29 @@ class Raycast : MonoBehaviour
         var isGoingRight = deltaMovement.x > 0;
         var rayDistance = Mathf.Abs(deltaMovement.x) + _skinWidth;
         var rayDirection = isGoingRight ? Vector2.right : Vector2.left;
-        var initialRayOrigin = isGoingRight ? _raycastOrigin.BottomRight : _raycastOrigin.BottomLeft;
+        var initialRayOrigin = isGoingRight ? _raycastOrigin.bottomRight : _raycastOrigin.bottomLeft;
 
         for (int i = 0; i < _totalHorizontalRays; i++)
         {
             var rayOrigin = new Vector2(initialRayOrigin.x, initialRayOrigin.y + i * _vertivalDistanceBetweenRays);
             DrawRay(rayOrigin, rayDirection * rayDistance, Color.red);
             //横向射线(横向在空中可通过单向平台)
-            if (i == 0 && _onGround)
-                raycastHit = Physics2D.Raycast(rayOrigin, rayDirection, rayDistance, _multiPlatformMask);
+            if (i == 0 && characterState.onGround)
+                raycastHit = Physics2D.Raycast(rayOrigin, rayDirection, rayDistance, multiPlatformMask);
             else
-                raycastHit = Physics2D.Raycast(rayOrigin, rayDirection, rayDistance, _multiPlatformMask & ~_onewayPlatformMask);
+                raycastHit = Physics2D.Raycast(rayOrigin, rayDirection, rayDistance, multiPlatformMask & ~onewayPlatformMask);
             if (raycastHit)
             {
                 deltaMovement.x = raycastHit.point.x - rayOrigin.x; //横向移动检测到碰撞时修正移动距离
                 if (isGoingRight)
                 {
                     deltaMovement.x -= _skinWidth;
+                    characterState.right = true;
                 }
                 else
                 {
                     deltaMovement.x += _skinWidth;
+                    characterState.left = true;
                 }
                 if (Mathf.Abs(deltaMovement.x) < _skinWidth + _kSkinWidthFloatFudgeFactor)
                 {
@@ -83,17 +95,17 @@ class Raycast : MonoBehaviour
         var isGoingUp = deltaMovement.y > 0;
         var rayDistance = Mathf.Abs(deltaMovement.y) + _skinWidth;
         var rayDirection = isGoingUp ? Vector2.up : Vector2.down;
-        var initialRayOrigin = isGoingUp ? _raycastOrigin.TopLeft : _raycastOrigin.BottomLeft;
+        var initialRayOrigin = isGoingUp ? _raycastOrigin.topLeft : _raycastOrigin.bottomLeft;
         initialRayOrigin.x += deltaMovement.x;
         for (int i = 0; i < _totalVerticalRays; i++)
         {
             var rayOrigin = new Vector2(initialRayOrigin.x + i * _horizontalDistanceBetweenRays, initialRayOrigin.y);
             DrawRay(rayOrigin, rayDirection * rayDistance, Color.red);
             //纵向射线(纵向在空中可通过单向平台)
-            if (!isGoingUp && _onGround)
-                raycastHit = Physics2D.Raycast(rayOrigin, rayDirection, rayDistance, _multiPlatformMask);
+            if (!isGoingUp && characterState.onGround)
+                raycastHit = Physics2D.Raycast(rayOrigin, rayDirection, rayDistance, multiPlatformMask);
             else
-                raycastHit = Physics2D.Raycast(rayOrigin, rayDirection, rayDistance, _multiPlatformMask & ~_onewayPlatformMask);
+                raycastHit = Physics2D.Raycast(rayOrigin, rayDirection, rayDistance, multiPlatformMask & ~onewayPlatformMask);
             if (raycastHit)
             {
                 deltaMovement.y = raycastHit.point.y - rayOrigin.y; //横向移动检测到碰撞时修正移动距离
@@ -104,6 +116,7 @@ class Raycast : MonoBehaviour
                 else
                 {
                     deltaMovement.y += _skinWidth;
+                    characterState.onGround = true;
                 }
                 if (Mathf.Abs(deltaMovement.y) < _skinWidth + _kSkinWidthFloatFudgeFactor)
                 {
@@ -127,8 +140,8 @@ class Raycast : MonoBehaviour
                 deltaMovement.x *= slopeModifier;
                 deltaMovement.y = Mathf.Abs(Mathf.Tan(angle * Mathf.Deg2Rad) * deltaMovement.x);
                 var isGoingRight = deltaMovement.x > 0;
-                var rayOrigin = isGoingRight ? _raycastOrigin.BottomRight : _raycastOrigin.BottomLeft;
-                var raycastHit = Physics2D.Raycast(rayOrigin, deltaMovement.normalized, deltaMovement.magnitude, _onGround ? LayerMask.GetMask("", "") : LayerMask.GetMask(""));
+                var rayOrigin = isGoingRight ? _raycastOrigin.bottomRight : _raycastOrigin.bottomLeft;
+                var raycastHit = Physics2D.Raycast(rayOrigin, deltaMovement.normalized, deltaMovement.magnitude, characterState.onGround ? LayerMask.GetMask("", "") : LayerMask.GetMask(""));
                 if (raycastHit)
                 {
                     deltaMovement = raycastHit.point - rayOrigin;
@@ -152,10 +165,10 @@ class Raycast : MonoBehaviour
 
     void HandleVerticalSlope(ref Vector2 deltaMovement)
     {
-        var centerOfCollider = (_raycastOrigin.BottomLeft.x + _raycastOrigin.BottomRight.x) * 0.5f;
-        var rayDistance = _slopeLimitTangent * (_raycastOrigin.BottomRight.x - centerOfCollider);
+        var centerOfCollider = (_raycastOrigin.bottomLeft.x + _raycastOrigin.bottomRight.x) * 0.5f;
+        var rayDistance = _slopeLimitTangent * (_raycastOrigin.bottomRight.x - centerOfCollider);
         var rayDirection = Vector2.down;
-        var slopeRayOrigin = new Vector2(centerOfCollider, _raycastOrigin.BottomLeft.y);
+        var slopeRayOrigin = new Vector2(centerOfCollider, _raycastOrigin.bottomLeft.y);
         DrawRay(slopeRayOrigin, rayDirection * rayDistance, Color.yellow);
         var raycastHit = Physics2D.Raycast(slopeRayOrigin, rayDirection, rayDistance, LayerMask.GetMask("", ""));
         if (raycastHit)
