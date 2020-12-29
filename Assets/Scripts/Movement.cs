@@ -29,6 +29,7 @@ public class Movement : MonoBehaviour
     private bool isDucking;
     public Vector2 Speed;
     public Vector2 Direction;
+    public Raycast raycast;
 
 
     private void WalkToRun(Vector2 move)
@@ -102,7 +103,11 @@ public class Movement : MonoBehaviour
     {
         WalkToRun(Direction);
         JumpToFall(Direction);
-        transform.position += new Vector3(Speed.x, Speed.y, 0) * Time.deltaTime;
+        raycast.UpdateRaycastOrigin();
+        var deltaMovement = Speed * Time.fixedDeltaTime;
+        raycast.FixedHorizontalMovement(ref deltaMovement);
+        raycast.FixedVerticalMovement(ref deltaMovement);
+        transform.position += new Vector3(deltaMovement.x, deltaMovement.y, 0);
     }
 
 }

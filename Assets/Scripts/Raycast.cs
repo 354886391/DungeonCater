@@ -17,7 +17,7 @@ struct CharacterState
     public bool wasOnGround;
 }
 
-class Raycast : MonoBehaviour
+public class Raycast : MonoBehaviour
 {
     int _totalVerticalRays = 8;
     int _totalHorizontalRays = 5;
@@ -26,12 +26,12 @@ class Raycast : MonoBehaviour
     float _slopeLimit = 30.0f;
     float _jumpThreshold = 0.07f;
     float _slopeLimitTangent = Mathf.Tan(75f * Mathf.Deg2Rad);
-    float _vertivalDistanceBetweenRays;
+    float _verticalDistanceBetweenRays;
     float _horizontalDistanceBetweenRays;
     float _kSkinWidthFloatFudgeFactor = 0.001f;
 
-    LayerMask multiPlatformMask;
-    LayerMask onewayPlatformMask;
+    public LayerMask multiPlatformMask;
+    public LayerMask onewayPlatformMask;
 
     RaycastHit2D raycastHit;
     BoxCollider2D _boxCollider;
@@ -42,9 +42,10 @@ class Raycast : MonoBehaviour
     private void Awake()
     {
         _boxCollider = GetComponent<BoxCollider2D>();
+        CalculateDistanceBetweenRays();
     }
 
-    void UpdateRaycastOrigin()
+    public void UpdateRaycastOrigin()
     {
         var bounds = _boxCollider.bounds;
         bounds.Expand(-2f * _skinWidth);
@@ -53,7 +54,16 @@ class Raycast : MonoBehaviour
         _raycastOrigin.bottomRight = new Vector2(bounds.max.x, bounds.min.y);
     }
 
-    void FixedHorizontalMovement(ref Vector2 deltaMovement)
+    public void CalculateDistanceBetweenRays()
+    {
+        var colliderUseableHeight = _boxCollider.size.y * Mathf.Abs(transform.localScale.y) - (2f * _skinWidth);
+        _verticalDistanceBetweenRays = colliderUseableHeight / (_totalHorizontalRays - 1);
+
+        var colliderUseableWidth = _boxCollider.size.x * Mathf.Abs(transform.localScale.x) - (2f * _skinWidth);
+        _horizontalDistanceBetweenRays = colliderUseableWidth / (_totalVerticalRays - 1);
+    }
+
+    public void FixedHorizontalMovement(ref Vector2 deltaMovement)
     {
         var isGoingRight = deltaMovement.x > 0;
         var rayDistance = Mathf.Abs(deltaMovement.x) + _skinWidth;
@@ -62,7 +72,7 @@ class Raycast : MonoBehaviour
 
         for (int i = 0; i < _totalHorizontalRays; i++)
         {
-            var rayOrigin = new Vector2(initialRayOrigin.x, initialRayOrigin.y + i * _vertivalDistanceBetweenRays);
+            var rayOrigin = new Vector2(initialRayOrigin.x, initialRayOrigin.y + i * _verticalDistanceBetweenRays);
             DrawRay(rayOrigin, rayDirection * rayDistance, Color.red);
             //横向射线(横向在空中可通过单向平台)
             if (i == 0 && characterState.onGround)
@@ -90,7 +100,7 @@ class Raycast : MonoBehaviour
         }
     }
 
-    void FixedVerticalMovement(ref Vector2 deltaMovement)
+    public void FixedVerticalMovement(ref Vector2 deltaMovement)
     {
         var isGoingUp = deltaMovement.y > 0;
         var rayDistance = Mathf.Abs(deltaMovement.y) + _skinWidth;
