@@ -4,93 +4,112 @@ using UnityEngine;
 public class Movement : MonoBehaviour
 {
 
-    private const float AirMult = .5f;
-    private const float Gravity = 8.0f;
-    private const float MaxRun = 8.0f;
-    private const float MaxFall = -12.0f;
-    private const float RunAccel = 10.0f;
+    private const float AirMult = .65f;
+    private const float Gravity = 90.0f;
+    private const float MaxRun = 9.0f;
+    private const float MaxFall = -16.0f;
+    private const float RunAccel = 100.0f;
     private const float RunReduce = 40.0f;
     private const float HalfGravity = 4.0f;
 
-    public const float JumpSpeed = 6.5f;
-    public const float JumpHBoost = 3.0f;
+    private const float HoldingMaxRun = 7.0f;
+
+    public const float JumpSpeed = 10.5f;
+    public const float JumpHBoost = 4.0f;
     public const float VarJumpTime = .2f;
     public const float JumpGraceTime = 0.1f;
 
-    private int JumpCount;
-    private float FirstJumpVBoost = 6.5f;
-    private float FirstJumpHBoost = 4.0f;
-    private float SecondJumpVBoost = 8.0f;
-    private float SecondJumpHBoost = 6.0f;
+    private const float LiftYCap = -13.0f;
+    private const float LiftXCap = 25.0f;
+
 
     public bool IsJump;
     public bool IsDash;
-    public bool IsDuck;
     public bool OnGround;
 
+    public bool IsDucking;
+    public bool IsHolding;
+
+    public float moveX;
     public Vector2 Speed;
     public Vector2 Direction;
+    private Vector2 LiftSpeed;
 
 
-    private void WalkToRun(Vector2 direction)
+    private Vector2 LiftBoost
     {
-        if (OnGround)
+        get
         {
-            float maxX = MaxRun;
-            if (direction.x == Mathf.Sign(Speed.x))
-            {
-                Speed.x = Mathf.MoveTowards(Speed.x, maxX * direction.x, RunAccel * Time.fixedDeltaTime);
-            }
-            else
-            {
-                Speed.x = Mathf.MoveTowards(Speed.x, 0, RunReduce * Time.fixedDeltaTime);
-            }
+            Vector2 val = LiftSpeed;
+
+            if (Math.Abs(val.x) > LiftXCap)
+                val.x = LiftXCap * Math.Sign(val.x);
+
+            if (val.y > 0)
+                val.y = 0;
+            else if (val.y < LiftYCap)
+                val.y = LiftYCap;
+
+            return val;
         }
     }
 
-    private void JumpToFall(Vector2 direction)
+    private void CRunning()
     {
-        if (OnGround)
+        if (IsDucking && OnGround)
         {
-            if (IsJump)
-            {
-                JumpCount = 1;
-                Speed.y = FirstJumpVBoost;
-                Speed.x = FirstJumpHBoost * direction.x;
-                Debug.Log("FirstJump");
-            }
         }
         else
         {
-            if (IsJump)
+            float mult = OnGround ? 1f : AirMult;
+            float max = IsHolding ? 6f : MaxRun;
+            if (Mathf.Abs(Speed.x) > max && Mathf.Sign(Speed.x) == moveX)
+                Speed.x = Mathf.MoveTowards(Speed.x, max * moveX, RunReduce * mult * Time.deltaTime);
+            else
+                Speed.x = Mathf.MoveTowards(Speed.x, max * moveX, RunAccel * mult * Time.deltaTime);
+            if (Mathf.Abs(Speed.x) > 0.0001f)
             {
-                JumpCount = 2;
-                Speed.y += SecondJumpVBoost;
-                Speed.x += SecondJumpHBoost * direction.x;
-                Debug.Log("SecondJump");
+                Debug.Log("speedX " + Speed.x);
             }
-            float maxX = MaxRun;
-            float mult = Mathf.Abs(Speed.y) < HalfGravity ? 0.5f : 1.0f;
-            Speed.y = Mathf.MoveTowards(Speed.y, 0, Gravity * mult * Time.fixedDeltaTime);
-            Speed.x = Mathf.MoveTowards(Speed.x, maxX * direction.x, RunAccel * AirMult * Time.fixedDeltaTime);
+        }
+
+    }
+
+    private void CGravity()
+    {
+        if (!OnGround)
+        {
+            float max = MaxFall;
+            //Wall Slide
+            float mult = (Mathf.Abs(Speed.y) < HalfGravity) ? 0.5f : 1f;
+            Speed.y = Mathf.MoveTowards(Speed.y, 0, Gravity * mult * Time.deltaTime);
+        }
+    }
+
+    private void CJumping()
+    {
+        LiftSpeed = Vector2.up * Math.Max(Speed.y, 8.0f);
+        if (IsJump)
+        {
+            Speed.x += JumpHBoost * moveX;
+            Speed.y = JumpSpeed;
+            Speed += LiftBoost;
         }
     }
 
     private void HandleInput()
     {
-        Direction.x = Input.GetAxisRaw("Horizontal");
+        moveX = Input.GetAxisRaw("Horizontal");
         Direction.y = Input.GetAxisRaw("Vertical");
         IsJump = Input.GetKeyDown(KeyCode.Space);
-        IsDuck = Input.GetKeyDown(KeyCode.Q);
-        var startPos = transform.position + Vector3.down * 0.16f;
-        var endPos = startPos + Vector3.down * 0.04f;
-        OnGround = IsOnGround(transform.position, Vector3.down, 0.32f);
-        DrawLine(transform.position, Vector3.down * 0.32f, Color.red);
+        IsDucking = Input.GetKeyDown(KeyCode.Q);
+        OnGround = IsOnGround(transform.position, Vector3.down, 0.25f);
+        DrawLine(transform.position, Vector3.down * 0.25f, Color.red);
     }
 
     private bool IsOnGround(Vector3 player, Vector3 direction, float distance)
     {
-        return Physics2D.Raycast(player, direction, distance, LayerMask.NameToLayer("Platform"));
+        return Physics2D.Raycast(player, direction, distance, LayerMask.GetMask("Platform"));
     }
 
     private void DrawLine(Vector3 start, Vector3 end, Color color)
@@ -106,14 +125,19 @@ public class Movement : MonoBehaviour
     private void Update()
     {
         HandleInput();
+        CRunning();
+        CGravity();
+        CJumping();
+        transform.Translate(Speed * Time.deltaTime);
     }
 
     private void FixedUpdate()
     {
-        WalkToRun(Direction);
-        JumpToFall(Direction);
-        var deltaMovement = Speed * Time.fixedDeltaTime;
-        transform.position += new Vector3(deltaMovement.x, deltaMovement.y, 0);
+
+        //JumpToFall(Direction);
+        //var deltaMovement = Speed * Time.deltaTime;
+
+        //transform.position += new Vector3(deltaMovement.x, deltaMovement.y, 0);
     }
 
 }

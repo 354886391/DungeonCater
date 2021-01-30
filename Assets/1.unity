@@ -228,6 +228,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 26fb509b56950d64697fcca631ded84c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  IsJump: 0
+  IsDash: 0
+  OnGround: 0
+  IsDucking: 0
+  IsHolding: 0
+  moveX: 0
   Speed: {x: 0, y: 0}
   Direction: {x: 0, y: 0}
 --- !u!61 &325401077
@@ -239,7 +245,7 @@ BoxCollider2D:
   m_GameObject: {fileID: 325401072}
   m_Enabled: 1
   m_Density: 1
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 6200000, guid: 06d7f9e3ddbde18479805356fb76a18c, type: 2}
   m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
@@ -723,7 +729,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1853939253}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: Platforms
   m_TagString: Untagged
   m_Icon: {fileID: 0}
